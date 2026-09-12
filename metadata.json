@@ -1,0 +1,8 @@
+{
+  "name": "Apple David Groomer Backend",
+  "description": "Backend API service for Apple David Pet Groomer appointment bookings, authentication, and services",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

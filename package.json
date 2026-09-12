@@ -1,0 +1,17 @@
+{
+  "name": "groom-workspace",
+  "private": true,
+  "workspaces": [
+    "Apple-David-Groomer-backend",
+    "shared-types"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace=apple-david-groomer-backend",
+    "build": "npm run build --workspaces --if-present",
+    "start": "npm run start --workspace=apple-david-groomer-backend",
+    "lint": "tsc -p Apple-David-Groomer-backend/tsconfig.json --noEmit && tsc -p shared-types/tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^7.0.2"
+  }
+}

@@ -9,6 +9,7 @@
     "db:reset": "cp db.json.backup db.json"
   },
   "dependencies": {
+    "@hono/node-server": "^1.13.8",
     "hono": "^4.6.12",
     "lowdb": "^7.0.1",
     "zod": "^3.25.76",
