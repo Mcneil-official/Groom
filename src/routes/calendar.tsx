@@ -6,6 +6,13 @@ import { StatusPill } from "@/components/StatusPill";
 import { formatDate, formatTime, useBookings } from "@/lib/bookings";
 import type { Booking, Status } from "@/lib/bookings";
 
+function checkAuth() {
+  const user = localStorage.getItem("apple-david-user");
+  if (!user) {
+    throw new Error("Not authenticated");
+  }
+}
+
 export const Route = createFileRoute("/calendar")({
   head: () => ({
     meta: [
@@ -21,6 +28,9 @@ export const Route = createFileRoute("/calendar")({
       },
     ],
   }),
+  beforeLoad: () => {
+    checkAuth();
+  },
   component: CalendarPage,
 });
 

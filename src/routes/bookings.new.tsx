@@ -3,6 +3,13 @@ import { AppShell } from "@/components/AppShell";
 import { BookingForm, emptyValues } from "@/components/BookingForm";
 import { useBookings } from "@/lib/bookings";
 
+function checkAuth() {
+  const user = localStorage.getItem("apple-david-user");
+  if (!user) {
+    throw new Error("Not authenticated");
+  }
+}
+
 export const Route = createFileRoute("/bookings/new")({
   head: () => ({
     meta: [
@@ -18,6 +25,9 @@ export const Route = createFileRoute("/bookings/new")({
       },
     ],
   }),
+  beforeLoad: () => {
+    checkAuth();
+  },
   component: NewBooking,
 });
 
@@ -30,11 +40,12 @@ function NewBooking() {
       <BookingForm
         initial={emptyValues}
         submitLabel="Save Booking"
-        checkDuplicate={(v) => hasDuplicate(v.petName, v.date, v.time)}
+        checkDuplicate={async (v) => await hasDuplicate(v.petName, v.date, v.time)}
         onCancel={() => navigate({ to: "/dashboard" })}
         onSubmit={(v, price) => {
-          const booking = add({ ...v, status: "Pending", price });
-          navigate({ to: "/bookings/$id", params: { id: booking.id } });
+          add({ ...v, status: "Pending", price }).then((booking) => {
+            navigate({ to: "/bookings/$id", params: { id: booking.id } });
+          });
         }}
       />
     </AppShell>

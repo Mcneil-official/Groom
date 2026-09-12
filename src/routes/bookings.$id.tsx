@@ -1,10 +1,17 @@
 import { createFileRoute, Link, useNavigate, useParams } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ArrowLeft, Cat, Dog } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { DeleteDialog } from "@/components/DeleteDialog";
 import { StatusPill } from "@/components/StatusPill";
-import { formatDate, formatTime, peso, useBookings } from "@/lib/bookings";
+import { formatDate, formatTime, peso, useBookings, type Booking } from "@/lib/bookings";
+
+function checkAuth() {
+  const user = localStorage.getItem("apple-david-user");
+  if (!user) {
+    throw new Error("Not authenticated");
+  }
+}
 
 export const Route = createFileRoute("/bookings/$id")({
   head: () => ({
@@ -21,6 +28,9 @@ export const Route = createFileRoute("/bookings/$id")({
       },
     ],
   }),
+  beforeLoad: () => {
+    checkAuth();
+  },
   component: BookingDetails,
 });
 
@@ -29,7 +39,30 @@ function BookingDetails() {
   const { get, remove } = useBookings();
   const navigate = useNavigate();
   const [confirming, setConfirming] = useState(false);
-  const booking = get(id);
+  const [booking, setBooking] = useState<Booking | undefined>();
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    setIsLoading(true);
+    get(id).then((b) => {
+      if (!cancelled) {
+        setBooking(b);
+        setIsLoading(false);
+      }
+    });
+    return () => { cancelled = true; };
+  }, [id, get]);
+
+  if (isLoading) {
+    return (
+      <AppShell title="Booking Details" subtitle="Loading...">
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent" />
+        </div>
+      </AppShell>
+    );
+  }
 
   if (!booking) {
     return (

@@ -24,7 +24,8 @@
     "exactOptionalPropertyTypes": true,
     "noUncheckedSideEffectImports": true,
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@apple-david/shared-types/*": ["../../shared-types/src/*"]
     }
   }
 }

@@ -15,6 +15,13 @@ import { StatusPill } from "@/components/StatusPill";
 import { DeleteDialog } from "@/components/DeleteDialog";
 import { STATUSES, formatDate, useBookings, type Booking } from "@/lib/bookings";
 
+function checkAuth() {
+  const user = localStorage.getItem("apple-david-user");
+  if (!user) {
+    throw new Error("Not authenticated");
+  }
+}
+
 export const Route = createFileRoute("/dashboard")({
   head: () => ({
     meta: [
@@ -30,15 +37,41 @@ export const Route = createFileRoute("/dashboard")({
       },
     ],
   }),
+  beforeLoad: () => {
+    checkAuth();
+  },
   component: Dashboard,
 });
 
 function Dashboard() {
-  const { bookings, remove } = useBookings();
+  const { bookings, isLoading, error, refetch, remove } = useBookings();
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("All");
   const [toDelete, setToDelete] = useState<Booking | null>(null);
+
+  if (isLoading) {
+    return (
+      <AppShell title="Pet Grooming Booking System" subtitle="Loading bookings...">
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent" />
+        </div>
+      </AppShell>
+    );
+  }
+
+  if (error) {
+    return (
+      <AppShell title="Pet Grooming Booking System" subtitle="Error loading bookings">
+        <div className="rounded-2xl bg-destructive/10 p-6 text-center">
+          <p className="text-destructive mb-4">{error}</p>
+          <button onClick={refetch} className="rounded-full bg-primary px-5 py-2.5 text-sm font-bold text-primary-foreground">
+            Retry
+          </button>
+        </div>
+      </AppShell>
+    );
+  }
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();

@@ -99,11 +99,12 @@ export function BookingForm({
   submitLabel: string;
   onSubmit: (v: FormValues, price: number) => void;
   onCancel: () => void;
-  checkDuplicate: (v: FormValues) => boolean;
+  checkDuplicate: (v: FormValues) => Promise<boolean>;
   showStatus?: boolean;
 }) {
   const [values, setValues] = useState<FormValues>(initial);
   const [errors, setErrors] = useState<ReturnType<typeof validate>>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const price = priceFor(values.service);
 
   const set = (k: keyof FormValues, val: string) =>
@@ -114,9 +115,19 @@ export function BookingForm({
       noValidate
       onSubmit={(ev) => {
         ev.preventDefault();
-        const e = validate(values, checkDuplicate(values));
-        setErrors(e);
-        if (Object.keys(e).length === 0) onSubmit(values, price);
+        const syncErrors = validate(values, false);
+        setErrors(syncErrors);
+        if (Object.keys(syncErrors).length > 0) return;
+        
+        setIsSubmitting(true);
+        checkDuplicate(values).then((duplicate) => {
+          if (duplicate) {
+            setErrors((prev) => ({ ...prev, duplicate: "This pet already has a booking at this date and time." }));
+            setIsSubmitting(false);
+          } else {
+            onSubmit(values, price);
+          }
+        });
       }}
       className="space-y-6"
     >
@@ -270,9 +281,10 @@ export function BookingForm({
             </div>
             <button
               type="submit"
-              className="mt-4 w-full rounded-full bg-primary px-6 py-2.5 text-sm font-bold text-primary-foreground shadow-card transition hover:opacity-90"
+              disabled={isSubmitting}
+              className="mt-4 w-full rounded-full bg-primary px-6 py-2.5 text-sm font-bold text-primary-foreground shadow-card transition hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {submitLabel}
+              {isSubmitting ? "Saving..." : submitLabel}
             </button>
             <button
               type="button"

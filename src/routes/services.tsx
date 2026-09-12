@@ -11,6 +11,13 @@ import {
 import { SERVICES, peso } from "@/lib/bookings";
 import { AppShell } from "@/components/AppShell";
 
+function checkAuth() {
+  const user = localStorage.getItem("apple-david-user");
+  if (!user) {
+    throw new Error("Not authenticated");
+  }
+}
+
 export const Route = createFileRoute("/services")({
   head: () => ({
     meta: [
@@ -26,6 +33,9 @@ export const Route = createFileRoute("/services")({
       },
     ],
   }),
+  beforeLoad: () => {
+    checkAuth();
+  },
   component: ServicesPage,
 });
 

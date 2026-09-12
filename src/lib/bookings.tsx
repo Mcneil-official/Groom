@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { api, type ApiError } from "./api.js";
 
 export const SERVICES = [
   { name: "Bath & Dry", price: 250 },
@@ -50,108 +51,91 @@ export function peso(n: number) {
   return `₱${n.toLocaleString("en-PH")}`;
 }
 
-const seed: Booking[] = [
-  {
-    id: "1",
-    code: "BK-001",
-    ownerName: "Maria Santos",
-    petName: "Mochi",
-    petType: "Dog",
-    service: "Full Grooming",
-    price: 500,
-    date: "2026-09-15",
-    time: "10:00",
-    status: "Confirmed",
-  },
-  {
-    id: "2",
-    code: "BK-002",
-    ownerName: "Juan Dela Cruz",
-    petName: "Bruno",
-    petType: "Dog",
-    service: "Bath & Dry",
-    price: 250,
-    date: "2026-09-16",
-    time: "13:30",
-    status: "Pending",
-  },
-  {
-    id: "3",
-    code: "BK-003",
-    ownerName: "Andrea Lim",
-    petName: "Milky",
-    petType: "Cat",
-    service: "Nail Trimming",
-    price: 150,
-    date: "2026-09-17",
-    time: "09:00",
-    status: "Completed",
-  },
-];
-
-const KEY = "apple-david-bookings";
-
 type Ctx = {
   bookings: Booking[];
-  get: (id: string) => Booking | undefined;
-  add: (b: Omit<Booking, "id" | "code">) => Booking;
-  update: (id: string, b: Partial<Booking>) => void;
-  remove: (id: string) => void;
-  hasDuplicate: (petName: string, date: string, time: string, ignoreId?: string) => boolean;
+  isLoading: boolean;
+  error: string | null;
+  refetch: () => Promise<void>;
+  get: (id: string) => Promise<Booking | undefined>;
+  add: (b: Omit<Booking, "id" | "code">) => Promise<Booking>;
+  update: (id: string, b: Partial<Booking>) => Promise<void>;
+  remove: (id: string) => Promise<void>;
+  hasDuplicate: (petName: string, date: string, time: string, ignoreId?: string) => Promise<boolean>;
 };
 
 const BookingsContext = createContext<Ctx | null>(null);
 
 export function BookingsProvider({ children }: { children: ReactNode }) {
-  const [bookings, setBookings] = useState<Booking[]>(seed);
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const refetch = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const response = await api.bookings.list({ pageSize: 100 });
+      setBookings(response.data);
+    } catch (err) {
+      const message = err instanceof ApiError ? err.message : 'Failed to load bookings';
+      setError(message);
+      console.error('Failed to fetch bookings:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(KEY);
-      if (raw) setBookings(JSON.parse(raw) as Booking[]);
-    } catch {
-      /* ignore */
-    }
+    refetch();
   }, []);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(KEY, JSON.stringify(bookings));
-    } catch {
-      /* ignore */
-    }
-  }, [bookings]);
 
   const value = useMemo<Ctx>(
     () => ({
       bookings,
-      get: (id) => bookings.find((b) => b.id === id),
-      add: (data) => {
-        const next = bookings.reduce((max, b) => {
-          const n = Number(b.code.replace(/\D/g, ""));
-          return Number.isFinite(n) && n > max ? n : max;
-        }, 0);
-        const booking: Booking = {
-          ...data,
-          id: crypto.randomUUID(),
-          code: `BK-${String(next + 1).padStart(3, "0")}`,
-        };
+      isLoading,
+      error,
+      refetch,
+      get: async (id) => {
+        try {
+          return await api.bookings.get(id);
+        } catch (err) {
+          console.error('Failed to fetch booking:', err);
+          return undefined;
+        }
+      },
+      add: async (data) => {
+        const booking = await api.bookings.create(data as any);
         setBookings((prev) => [...prev, booking]);
         return booking;
       },
-      update: (id, patch) =>
-        setBookings((prev) => prev.map((b) => (b.id === id ? { ...b, ...patch } : b))),
-      remove: (id) => setBookings((prev) => prev.filter((b) => b.id !== id)),
-      hasDuplicate: (petName, date, time, ignoreId) =>
-        bookings.some(
-          (b) =>
-            b.id !== ignoreId &&
-            b.petName.trim().toLowerCase() === petName.trim().toLowerCase() &&
-            b.date === date &&
-            b.time === time,
-        ),
+      update: async (id, patch) => {
+        const updated = await api.bookings.update(id, patch);
+        setBookings((prev) => prev.map((b) => (b.id === id ? updated : b)));
+      },
+      remove: async (id) => {
+        await api.bookings.delete(id);
+        setBookings((prev) => prev.filter((b) => b.id !== id));
+      },
+      hasDuplicate: async (petName, date, time, ignoreId) => {
+        try {
+          const response = await api.bookings.list({
+            search: petName,
+            pageSize: 100,
+          });
+          return response.data.some(
+            (b) =>
+              b.id !== ignoreId &&
+              b.petName.trim().toLowerCase() === petName.trim().toLowerCase() &&
+              b.date === date &&
+              b.time === time &&
+              b.status !== "Cancelled",
+          );
+        } catch {
+          return false;
+        }
+      },
     }),
-    [bookings],
+    [bookings, isLoading, error],
   );
 
   return <BookingsContext.Provider value={value}>{children}</BookingsContext.Provider>;
