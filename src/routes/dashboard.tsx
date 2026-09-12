@@ -57,7 +57,7 @@ function Dashboard() {
 
   return (
     <AppShell
-      title="Apple David Pet Grooming Booking System"
+      title="Pet Grooming Booking System"
       subtitle="Every wash, trim and cuddle, neatly scheduled."
       action={
         <Link
